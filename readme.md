@@ -22,6 +22,19 @@ Linux packages are self-contained and do not require dotnet to be installed at
 runtime. Use `linux-x64` first on Manjaro/Arch; use `linux-musl-x64` only as a
 fallback for glibc compatibility problems. See `docs/linux-packaging.md`.
 
+## Local Build Scripts
+
+- `python3 compile_linux_arch.py` installs/validates Manjaro/Arch build requirements, builds `linux-x64`, and creates the Arch `.pkg.tar.zst` package.
+- `python3 compile_windows.py` installs/validates Windows cross-build requirements and publishes a self-contained Windows 10/11 `win-x64` package from Linux.
+- `./compile_all_with_linux.sh` runs both Linux and Windows builds from Linux, keeping Windows-specific build variables isolated from Linux variables.
+
+Useful flags:
+
+- `--skip-install` validates and builds without installing packages.
+- `--check-only` validates requirements without compiling.
+- `--no-arch-package` skips the pacman package.
+- `--no-zip` skips the Windows zip.
+
 ## Main Changes
 
 - Preserves AssetBundle compression and block/directory layout when saving modified bundles.
