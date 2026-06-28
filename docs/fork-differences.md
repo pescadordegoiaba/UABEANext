@@ -19,7 +19,7 @@ The fork remotes are:
 - Expands mesh import/export and preview support, including OBJ-related helpers.
 - Adds Il2Cpp project probing and metadata dump integration for Cpp2IL workflows.
 - Improves image preview, inspector, workspace explorer, and plugin loading behavior.
-- Adds Linux packaging scripts and Arch packaging metadata.
+- Adds Linux packaging scripts, Arch packaging metadata, and updated Ubuntu workflow artifacts.
 
 ## AssetsTools.NET Changes
 

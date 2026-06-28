@@ -1,4 +1,4 @@
-name: Build UABEA Ubuntu
+name: Build UABEA Linux
 
 on:
   push:
@@ -11,6 +11,13 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
+    strategy:
+      fail-fast: false
+      matrix:
+        rid:
+          - linux-x64
+          - linux-musl-x64
+
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -18,22 +25,16 @@ jobs:
         fetch-depth: 0
         submodules: recursive
 
-    - name: Install .NET Core
+    - name: Install .NET SDK
       uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
 
-    - name: Restore
-      run: dotnet restore
+    - name: Build self-contained package
+      run: bash eng/linux/package-linux.sh --rid "${{ matrix.rid }}" --output artifacts/linux
 
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
-
-    - name: Remove unused platforms
-      run: find UABEANext4.Desktop/bin/Release/net8.0/runtimes/* -maxdepth 0 ! -name linux-x64 -type d -exec rm -r {} +
-      
     - name: Upload
       uses: actions/upload-artifact@v6
       with:
-        name: uabea-ubuntu
-        path: UABEANext4.Desktop/bin/Release/net8.0
+        name: uabea-${{ matrix.rid }}
+        path: artifacts/linux/uabea-next-${{ matrix.rid }}.tar.gz
