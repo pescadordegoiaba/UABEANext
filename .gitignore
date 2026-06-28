@@ -17,6 +17,10 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+bin/
+obj/
+**/bin/
+**/obj/
 x64/
 x86/
 bld/
@@ -218,6 +222,20 @@ ClientBin/
 *.pfx
 *.publishsettings
 orleans.codegen.cs
+
+# Local game dumps and extracted proprietary assets
+DeathRun Portable/
+*.apk
+*.obb
+*.xapk
+*.apks
+*.dex
+*.so
+*.assets
+*.assets.split*
+*.resource
+*.resS
+Libraries/Il2CppDumper/Libraries/*.dll
 
 # Including strong name files can present a security risk 
 # (https://github.com/github/gitignore/pull/2483#issue-259490424)

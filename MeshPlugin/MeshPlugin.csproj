@@ -19,7 +19,7 @@
   <!-- or publishing, so we just have two separate targets -->
 
   <!-- build event -->
-  <Target Name="CopyLibrariesBuild" AfterTargets="AfterBuild" Condition="'$(SolutionDir)' != '*Undefined*'">
+  <Target Name="CopyLibrariesBuild" AfterTargets="AfterBuild" Condition="'$(SolutionDir)' != '*Undefined*' And '$(UABEACopyPluginToDesktop)' == 'true'">
     <PropertyGroup>
       <UABEABinDir>$(SolutionDir)UABEANext4.Desktop\$(OutputPath)</UABEABinDir>
     </PropertyGroup>
@@ -29,7 +29,7 @@
   </Target>
 
   <!-- publish event -->
-  <Target Name="CopyLibrariesPublish" AfterTargets="Publish" Condition="'$(SolutionDir)' != '*Undefined*'">
+  <Target Name="CopyLibrariesPublish" AfterTargets="Publish" Condition="'$(SolutionDir)' != '*Undefined*' And '$(UABEACopyPluginToDesktop)' == 'true'">
     <PropertyGroup>
       <UABEABinDir>$(SolutionDir)UABEANext4.Desktop\$(PublishDir)</UABEABinDir>
     </PropertyGroup>

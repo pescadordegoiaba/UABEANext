@@ -16,6 +16,7 @@ public class PluginLoader
     {
         try
         {
+            VerboseLog.Log("Plugins", $"LoadPlugin {path}");
             var fullPath = Path.GetFullPath(path);
 
             if (_loadedPaths.Contains(fullPath))
@@ -67,10 +68,12 @@ public class PluginLoader
                 _loadedPaths.Add(fullPath);
             }
 
+            VerboseLog.Log("Plugins", $"LoadPlugin {fullPath} -> {(anyAdded ? "loaded" : "no types")}");
             return anyAdded;
         }
-        catch
+        catch (Exception ex)
         {
+            VerboseLog.LogException("Plugins", ex, $"LoadPlugin failed for {path}");
             return false;
         }
 
@@ -78,9 +81,11 @@ public class PluginLoader
 
     public void LoadPluginsInDirectory(string directory)
     {
+        VerboseLog.Log("Plugins", $"LoadPluginsInDirectory {directory}");
         if (!Directory.Exists(directory))
         {
             Directory.CreateDirectory(directory);
+            VerboseLog.Log("Plugins", $"Created plugins directory {directory}");
             return;
         }
 

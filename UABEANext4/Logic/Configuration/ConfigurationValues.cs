@@ -46,6 +46,11 @@ public partial class ConfigurationValues : ObservableObject
     [property: ConfigDesc("When unchecked, sprites are placed on a virtual canvas with padding. When checked, sprites are fully cropped.")]
     private bool _fullCropSprites = true;
 
+    [ObservableProperty]
+    [property: ConfigTitle("Verbose Logging")]
+    [property: ConfigDesc("Write detailed execution traces to stderr and verbose.log (disable with env UABEA_VERBOSE=0).")]
+    private bool _verboseLogging = true;
+
     private readonly Action<int> _saveDebounceFunc = DebounceUtils.Debounce(
         (int _) => ConfigurationManager.SaveConfig(), 500);
 

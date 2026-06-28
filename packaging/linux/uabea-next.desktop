@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=UABEANext
+Comment=Unity asset bundle editor
+Exec=uabea-next %F
+Terminal=false
+Categories=Development;Utility;
+StartupNotify=true

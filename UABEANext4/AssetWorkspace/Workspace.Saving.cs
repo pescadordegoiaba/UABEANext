@@ -72,6 +72,29 @@ public partial class Workspace
         fileInst.file.Write(new AssetsFileWriter(stream));
     }
 
+    private static FileStream CreateTemporaryBundleStream()
+    {
+        var path = Path.GetTempFileName();
+        return new FileStream(
+            path,
+            FileMode.Create,
+            FileAccess.ReadWrite,
+            FileShare.None,
+            4096,
+            FileOptions.DeleteOnClose | FileOptions.SequentialScan);
+    }
+
+    private static void ResetOutputStream(Stream stream)
+    {
+        if (!stream.CanSeek)
+        {
+            throw new NotSupportedException("Bundle output stream must support seeking.");
+        }
+
+        stream.Position = 0;
+        stream.SetLength(0);
+    }
+
     // warning! OriginalName needs to be updated if save overwrite is used
     private void WriteBundleFile(WorkspaceItem item, Stream stream)
     {
@@ -114,7 +137,31 @@ public partial class Workspace
             }
         }
 
-        bunInst.file.Write(new AssetsFileWriter(stream));
+        ResetOutputStream(stream);
+
+        // Pack does not apply directory replacers, so first write the updated
+        // bundle without compression and then pack that complete result.
+        using var unpackedStream = CreateTemporaryBundleStream();
+        bunInst.file.Write(new AssetsFileWriter(unpackedStream));
+        unpackedStream.Position = 0;
+
+        if (bunInst.originalCompression == AssetBundleCompressionType.None)
+        {
+            unpackedStream.CopyTo(stream);
+        }
+        else
+        {
+            var updatedBundle = new AssetBundleFile();
+            updatedBundle.Read(new AssetsFileReader(unpackedStream));
+            updatedBundle.Pack(
+                new AssetsFileWriter(stream),
+                bunInst.originalCompression,
+                bunInst.originalBlockAndDirAtEnd);
+        }
+
+        VerboseLog.Log("Workspace",
+            $"Bundle written: {bunInst.name}, compression={bunInst.originalCompression}, " +
+            $"blockDirAtEnd={bunInst.originalBlockAndDirAtEnd}");
     }
 
     private void WriteResource(WorkspaceItem item, Stream stream)
@@ -230,8 +277,20 @@ public partial class Workspace
             }
             else if (item.Object is BundleFileInstance bunInst)
             {
-                bunInst.file = new AssetBundleFile();
-                bunInst.file.Read(new AssetsFileReader(newStream));
+                var reloadedBundle = new AssetBundleFile();
+                reloadedBundle.Read(new AssetsFileReader(newStream));
+                bunInst.originalCompression = reloadedBundle.GetCompressionType();
+                bunInst.originalBlockAndDirAtEnd =
+                    (reloadedBundle.Header.FileStreamHeader.Flags & AssetBundleFSHeaderFlags.BlockAndDirAtEnd) != 0;
+
+                // LZMA data cannot be read through a random-access block stream,
+                // so keep the workspace copy unpacked just like initial loading.
+                if (reloadedBundle.DataIsCompressed)
+                {
+                    reloadedBundle = BundleHelper.UnpackBundle(reloadedBundle);
+                }
+
+                bunInst.file = reloadedBundle;
                 item.OriginalName = item.Name;
                 for (var i = 0; i < item.Children.Count; i++)
                 {

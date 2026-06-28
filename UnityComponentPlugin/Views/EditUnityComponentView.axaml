@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:UnityComponentPlugin.ViewModels"
+             x:Class="UnityComponentPlugin.Views.EditUnityComponentView"
+             x:DataType="vm:EditUnityComponentViewModel"
+             Background="{DynamicResource DockThemeBackgroundBrush}">
+
+    <Grid Margin="12" RowDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Row="0" Text="{Binding AssetSummary}" Margin="0,0,0,10" TextWrapping="Wrap"
+                   Foreground="{DynamicResource DockThemeForegroundBrush}" FontSize="12" />
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="8">
+
+                <StackPanel IsVisible="{Binding ShowGameObject}" Spacing="6">
+                    <TextBlock Text="GameObject" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Name" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Name}" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Active" VerticalAlignment="Center" />
+                        <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding IsActive}" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Layer" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding LayerString}" />
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Tag" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding TagString}" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding ShowTransform}" Spacing="6">
+                    <TextBlock Text="Transform" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Position (x,y,z)" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding LocalPosition}" Watermark="0, 0, 0" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Rotation ° (x,y,z)" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding LocalRotationEuler}" Watermark="0, 0, 0" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Scale (x,y,z)" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding LocalScale}" Watermark="1, 1, 1" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding ShowMeshLink}" Spacing="6">
+                    <TextBlock Text="Mesh reference" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="120,*">
+                        <TextBlock Grid.Column="0" Text="Mesh Path ID" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding MeshPathId}" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding ShowRenderer}" Spacing="6">
+                    <TextBlock Text="Mesh Renderer" FontWeight="SemiBold" />
+                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" />
+                    <CheckBox Content="Cast shadows" IsChecked="{Binding CastShadows}" />
+                    <CheckBox Content="Receive shadows" IsChecked="{Binding ReceiveShadows}" />
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding ShowShader}" Spacing="6">
+                    <TextBlock Text="Shader" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="120,*">
+                        <TextBlock Grid.Column="0" Text="Name" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Name}" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding ShowBoxCollider}" Spacing="6">
+                    <TextBlock Text="Box Collider" FontWeight="SemiBold" />
+                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" />
+                    <CheckBox Content="Is Trigger" IsChecked="{Binding IsTrigger}" />
+                    <TextBlock Text="Size (x,y,z)" />
+                    <TextBox Text="{Binding ColliderSize}" />
+                    <TextBlock Text="Center (x,y,z)" />
+                    <TextBox Text="{Binding ColliderCenter}" />
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding ShowMeshCollider}" Spacing="6">
+                    <TextBlock Text="Mesh Collider" FontWeight="SemiBold" />
+                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" />
+                    <CheckBox Content="Is Trigger" IsChecked="{Binding IsTrigger}" />
+                    <CheckBox Content="Convex" IsChecked="{Binding Convex}" />
+                    <TextBlock Text="Mesh Path ID" />
+                    <TextBox Text="{Binding MeshPathId}" />
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding ShowRigidbody}" Spacing="6">
+                    <TextBlock Text="Rigidbody" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Mass" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding MassString}" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Drag" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DragString}" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Angular drag" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding AngularDragString}" />
+                        <CheckBox Grid.Row="3" Grid.Column="1" Content="Use gravity" IsChecked="{Binding UseGravity}" />
+                        <CheckBox Grid.Row="4" Grid.Column="1" Content="Is kinematic" IsChecked="{Binding IsKinematic}" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding ShowCamera}" Spacing="6">
+                    <TextBlock Text="Camera" FontWeight="SemiBold" />
+                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" />
+                    <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Field of view" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding FieldOfViewString}" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Near clip" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding NearClipString}" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Far clip" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding FarClipString}" />
+                        <CheckBox Grid.Row="3" Grid.Column="1" Content="Orthographic" IsChecked="{Binding Orthographic}" />
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Ortho size" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding OrthographicSizeString}" />
+                    </Grid>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+            <Button Content="Save" Command="{Binding SaveCommand}" Width="85" Height="30" IsDefault="True" />
+            <Button Content="Close" Command="{Binding CancelCommand}" Width="85" Height="30" IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -19,7 +19,10 @@ public partial class AssetInfoViewModel : ViewModelBase, IDialogAware
         get => _selectedItem;
         set
         {
-            _selectedItem = value;
+            if (!SetProperty(ref _selectedItem, value))
+            {
+                return;
+            }
 
             if (_selectedItem is not { Object: AssetsFileInstance inst })
             {
@@ -63,7 +66,10 @@ public partial class AssetInfoViewModel : ViewModelBase, IDialogAware
 
     public AssetInfoViewModel(Workspace workspace, IEnumerable<WorkspaceItem> items)
     {
-        Items = items.ToList();
+        Items = WorkspaceItem.GetAssetsFileWorkspaceItems(items)
+            .Distinct()
+            .ToList();
         _workspace = workspace;
+        SelectedItem = Items.FirstOrDefault();
     }
 }

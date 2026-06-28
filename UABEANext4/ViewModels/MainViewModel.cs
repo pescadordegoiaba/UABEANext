@@ -18,6 +18,8 @@ using System.Threading.Tasks;
 using UABEANext4.AssetWorkspace;
 using UABEANext4.Logic;
 using UABEANext4.Logic.Configuration;
+using UABEANext4.Logic.Il2Cpp;
+using AssetsTools.NET.Cpp2IL;
 using UABEANext4.Services;
 using UABEANext4.Util;
 using UABEANext4.ViewModels.Dialogs;
@@ -61,6 +63,7 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        VerboseLog.Log("Main", "MainViewModel ctor");
         Workspace = new();
         _factory = new MainDockFactory(Workspace);
         Layout = _factory.CreateLayout();
@@ -201,6 +204,7 @@ public partial class MainViewModel : ViewModelBase
     #region Menu items
     public async Task OpenFiles(IEnumerable<string?> paths)
     {
+        using var scope = VerboseLog.Scope("Main", "OpenFiles");
         var databaseStartedUnloaded = Workspace.Manager.ClassDatabase == null;
 
         var filePaths = new List<string>();
@@ -213,6 +217,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         var totalCount = filePaths.Count;
+        VerboseLog.Log("Main", $"OpenFiles queued {totalCount} path(s)");
         if (totalCount == 0)
         {
             return;
@@ -237,15 +242,18 @@ public partial class MainViewModel : ViewModelBase
                 {
                     try
                     {
+                        VerboseLog.Log("Main", $"Loading file {fileName}");
                         var fileStream = File.Open(fileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                         var file = Workspace.LoadAnyFile(fileStream, startLoadOrder + (int)index);
                         var currentCountNow = Interlocked.Increment(ref currentCount);
                         var currentProgress = currentCountNow / (float)totalCount;
                         anyLoaded = true;
+                        VerboseLog.Log("Main", $"Loaded {fileName} -> {(file?.Name ?? "null")}");
                         Workspace.SetProgressThreadSafe(currentProgress, "Loaded " + Path.GetFileName(fileName));
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        VerboseLog.LogException("Main", ex, $"Skipping file {fileName}");
                         var currentCountNow = Interlocked.Increment(ref currentCount);
                         var currentProgress = currentCountNow / (float)totalCount;
                         Workspace.SetProgressThreadSafe(currentProgress, "Skipping " + Path.GetFileName(fileName));
@@ -261,6 +269,8 @@ public partial class MainViewModel : ViewModelBase
             Workspace.ModifyMutex.ReleaseMutex();
         });
 
+        TryAutoRegisterMonoFromOpenedPaths(filePaths);
+
         if (Workspace.Manager.ClassDatabase is null)
         {
             var anySerializedItems = false;
@@ -275,7 +285,7 @@ public partial class MainViewModel : ViewModelBase
                 {
                     foreach (var childItem in rootItem.Children)
                     {
-                        if (rootItem.ObjectType == WorkspaceItemType.AssetsFile)
+                        if (childItem.ObjectType == WorkspaceItemType.AssetsFile)
                         {
                             anySerializedItems = true;
                             break;
@@ -552,6 +562,7 @@ public partial class MainViewModel : ViewModelBase
 
     private async Task<AssetDocumentViewModel?> OpenAssetDocument(List<WorkspaceItem> workspaceItems, bool replaceDock)
     {
+        using var scope = VerboseLog.Scope("Main", "OpenAssetDocument", $"items={workspaceItems.Count}, replaceDock={replaceDock}");
         var loadContainers = ConfigurationManager.Settings.LoadContainerPaths;
 
         AssetDocumentViewModel document;
@@ -621,7 +632,9 @@ public partial class MainViewModel : ViewModelBase
         }
 
         _lastLoadedFiles = workspaceItems.Select(i => i.Object as AssetsFileInstance).Where(i => i != null).ToList()!;
+        VerboseLog.Log("Main", $"AssetDocument.Load starting for {_lastLoadedFiles.Count} file(s)");
         await document.Load(_lastLoadedFiles);
+        scope.Complete($"document={document.Title}");
 
         return document;
     }
@@ -790,5 +803,189 @@ public partial class MainViewModel : ViewModelBase
     {
         var dialogService = Ioc.Default.GetRequiredService<IDialogService>();
         dialogService.Show(new SettingsViewModel());
+    }
+
+    public async Task ShowIl2CppDumpDialog()
+    {
+        var dialogService = Ioc.Default.GetRequiredService<IDialogService>();
+        var storageProvider = GetStorageProvider();
+        if (storageProvider == null)
+        {
+            await MessageBoxUtil.ShowDialog("Il2CppDumper", "File picker is not available.");
+            return;
+        }
+
+        var vm = new Il2CppDumpViewModel();
+        vm.BindStorageProvider(storageProvider);
+
+        var gameDataDir = TryGetDefaultGameDataDirectory();
+        if (gameDataDir != null)
+        {
+            vm.GameDataDirectory = gameDataDir;
+        }
+
+        var ran = await dialogService.ShowDialog(vm);
+        if (vm.RegisteredMono)
+        {
+            var root = vm.LastApkRoot ?? vm.GameDataDirectory;
+            if (!string.IsNullOrEmpty(root))
+            {
+                Workspace.TryRegisterMonoFromGameRoot(root);
+            }
+
+            await MessageBoxUtil.ShowDialog("Unity Mono",
+                "Templates MonoBehaviour ativados via Managed/*.dll.\n\n" +
+                "Abra os .assets em assets/bin/Data/ no UABEANext.");
+            return;
+        }
+        if (ran != true || vm.LastResult is not { Success: true } result)
+        {
+            return;
+        }
+
+        if (vm.InstallForWorkspace)
+        {
+            var installDir = string.IsNullOrWhiteSpace(vm.GameDataDirectory)
+                ? gameDataDir
+                : vm.GameDataDirectory;
+
+            if (!string.IsNullOrEmpty(installDir))
+            {
+                string il2cppDataDir;
+                if (Directory.Exists(Path.Combine(installDir, "Metadata")))
+                {
+                    il2cppDataDir = installDir;
+                }
+                else if (Directory.Exists(Path.Combine(installDir, "il2cpp_data", "Metadata")))
+                {
+                    il2cppDataDir = Path.Combine(installDir, "il2cpp_data");
+                }
+                else
+                {
+                    il2cppDataDir = Directory.Exists(Path.Combine(installDir, "il2cpp_data"))
+                        ? Path.Combine(installDir, "il2cpp_data")
+                        : installDir;
+                }
+
+                Workspace.ApplyIl2CppDumpResult(
+                    result.MetadataPathUsed ?? "",
+                    result.Il2CppBinaryPathUsed ?? vm.Il2CppBinaryPath,
+                    il2cppDataDir);
+            }
+            else
+            {
+                Workspace.ResetMonoTemplateGenerators();
+                if (result.MetadataPathUsed != null && result.Il2CppBinaryPathUsed != null)
+                {
+                    Workspace.Manager.MonoTempGenerator = new Cpp2IlTempGenerator(
+                        result.MetadataPathUsed,
+                        result.Il2CppBinaryPathUsed);
+                }
+            }
+        }
+
+        var bypassInfo = "";
+        if (!string.IsNullOrEmpty(result.MetadataBypassMethod))
+        {
+            bypassInfo += $"\nMetadata bypass: {result.MetadataBypassMethod}";
+        }
+
+        if (!string.IsNullOrEmpty(result.BinaryBypassMethod) && result.BinaryBypassMethod != "none")
+        {
+            bypassInfo += $"\nBinary bypass: {result.BinaryBypassMethod}";
+        }
+
+        await MessageBoxUtil.ShowDialog("Il2CppDumper",
+            $"Dump concluído em:\n{result.OutputDirectory}{bypassInfo}");
+    }
+
+    private void TryAutoRegisterMonoFromOpenedPaths(List<string> filePaths)
+    {
+        try
+        {
+            foreach (var filePath in filePaths)
+            {
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    continue;
+                }
+
+                var probe = Il2CppProjectProbe.ProbeNearOpenedAsset(filePath.Trim());
+                if (probe.Backend != UnityScriptBackend.Mono || string.IsNullOrEmpty(probe.ManagedDirectory))
+                {
+                    continue;
+                }
+
+                if (Workspace.TryRegisterMonoFromManagedDirectory(probe.ManagedDirectory))
+                {
+                    VerboseLog.Log("Main",
+                        $"Mono auto-registrado para templates MonoBehaviour ({probe.ManagedDirectory})");
+                }
+
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            VerboseLog.LogException("Main", ex, "Mono auto-register failed");
+        }
+    }
+
+    private string? TryGetDefaultGameDataDirectory()
+    {
+        foreach (var root in Workspace.RootItems)
+        {
+            var path = GetDataDirectoryFromWorkspaceItem(root);
+            if (path != null)
+            {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? GetDataDirectoryFromWorkspaceItem(WorkspaceItem item)
+    {
+        if (item.Object is AssetsFileInstance afi && afi.path != null)
+        {
+            var dir = Path.GetDirectoryName(afi.path);
+            if (dir == null)
+            {
+                return null;
+            }
+
+            if (Directory.Exists(Path.Combine(dir, "il2cpp_data")))
+            {
+                return dir;
+            }
+
+            var parent = Directory.GetParent(dir)?.FullName;
+            if (parent != null && Directory.Exists(Path.Combine(parent, "il2cpp_data")))
+            {
+                return parent;
+            }
+        }
+
+        foreach (var child in item.Children)
+        {
+            var found = GetDataDirectoryFromWorkspaceItem(child);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private IStorageProvider? GetStorageProvider()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return desktop.MainWindow?.StorageProvider;
+        }
+
+        return null;
     }
 }

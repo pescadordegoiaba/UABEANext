@@ -75,6 +75,9 @@
       <DependentUpon>SettingsView.axaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="Views\Dialogs\Il2CppDumpView.axaml.cs">
+      <DependentUpon>Il2CppDumpView.axaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>
@@ -86,5 +89,6 @@
     <ProjectReference Include="..\Libraries\AssetsTools.NET\AssetsTools.NET.MonoCecil\AssetsTools.NET.MonoCecil.csproj" />
     <ProjectReference Include="..\Libraries\AssetsTools.NET\AssetsTools.NET.Texture\AssetsTools.NET.Texture.csproj" />
     <ProjectReference Include="..\Libraries\AssetsTools.NET\AssetTools.NET\AssetsTools.NET.csproj" />
+    <ProjectReference Include="..\Libraries\Il2CppDumper\Il2CppDumper.csproj" />
   </ItemGroup>
 </Project>

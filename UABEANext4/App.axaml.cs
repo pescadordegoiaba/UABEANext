@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using UABEANext4.Logic.Configuration;
 using UABEANext4.Services;
+using UABEANext4.Util;
 using UABEANext4.ViewModels;
 using UABEANext4.Views;
 
@@ -48,6 +49,9 @@ public partial class App : Application
         // it loads and runs the constructor
         if (!ConfigurationManager.IsInitialized)
             throw new Exception("Expected config man to initialize");
+
+        VerboseLog.ApplyConfiguration(ConfigurationManager.Settings.VerboseLogging);
+        VerboseLog.Log("Startup", $"Framework initialized. Config={ConfigurationManager.ConfigPath}, Log={VerboseLog.LogFilePath}");
 
         base.OnFrameworkInitializationCompleted();
     }

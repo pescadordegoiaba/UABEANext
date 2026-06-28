@@ -5,6 +5,8 @@ UABEA with dock support. When this repo becomes stable and reaches feature parit
 Nightly:
 
 - https://nightly.link/nesrak1/UABEANext/workflows/build-windows/master/uabea-windows.zip
-- https://nightly.link/nesrak1/UABEANext/workflows/build-ubuntu/master/uabea-ubuntu.zip
+
+Linux packaging scripts are available in `eng/linux`. See
+`docs/linux-packaging.md`.
 
 Report any issues on the original repo: https://github.com/nesrak1/UABEA

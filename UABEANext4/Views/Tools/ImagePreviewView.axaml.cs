@@ -11,6 +11,7 @@ public partial class ImagePreviewView : UserControl
 {
     private bool _pointerDown = false;
     private Point _lastPointerPos = new Point(-1, -1);
+    private ImagePreviewViewModel? _subscribedImagePreview;
 
     public ImagePreviewView()
     {
@@ -23,9 +24,16 @@ public partial class ImagePreviewView : UserControl
 
         DataContextChanged += (s, e) =>
         {
+            if (_subscribedImagePreview is not null)
+            {
+                _subscribedImagePreview.PropertyChanged -= OnImagePreviewPropertyChanged;
+                _subscribedImagePreview = null;
+            }
+
             if (DataContext is PreviewerToolViewModel vm)
             {
-                vm.ImagePreview.PropertyChanged += OnImagePreviewPropertyChanged;
+                _subscribedImagePreview = vm.ImagePreview;
+                _subscribedImagePreview.PropertyChanged += OnImagePreviewPropertyChanged;
             }
         };
     }
@@ -52,6 +60,11 @@ public partial class ImagePreviewView : UserControl
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
         _pointerDown = true;
         _lastPointerPos = e.GetPosition(this);
     }
@@ -88,5 +101,10 @@ public partial class ImagePreviewView : UserControl
                 vm.ImagePreview.FitToSize(ImageScroll.Bounds.Width, ImageScroll.Bounds.Height);
             }
         }
+    }
+
+    private void OnFitClicked(object? sender, RoutedEventArgs e)
+    {
+        TriggerFit();
     }
 }

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UABEANext4.AssetWorkspace;
+using UABEANext4.Util;
 using UABEANext4.ViewModels.Documents;
 
 namespace UABEANext4.Views.Documents;
@@ -72,7 +73,13 @@ public partial class AssetDocumentView : UserControl
     {
         if (DataContext is AssetDocumentViewModel docVm)
         {
-            var selectedAssetInsts = dataGrid.SelectedItems.Cast<AssetInst>().ToList();
+            var selectedAssetInsts = dataGrid.SelectedItems.OfType<AssetInst>().ToList();
+            if (selectedAssetInsts.Count == 0 && dataGrid.SelectedItem is AssetInst selectedAsset)
+            {
+                selectedAssetInsts.Add(selectedAsset);
+            }
+
+            VerboseLog.Log("AssetDoc", $"DataGrid_SelectionChanged selected={selectedAssetInsts.Count} added={e.AddedItems.Count} removed={e.RemovedItems.Count}");
             docVm.OnAssetOpened(selectedAssetInsts);
         }
     }

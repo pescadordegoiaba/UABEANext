@@ -210,7 +210,10 @@ public class TextureLoader
 
         var version = asset.FileInstance.file.Metadata.UnityVersion;
         var mesh = new MeshObj(asset.FileInstance, renderData, new UnityVersion(version));
-        if (mesh.Vertices.Length % 3 != 0)
+        var vertexStride = mesh.VertexCount > 0 && mesh.Vertices.Length >= mesh.VertexCount * 2
+            ? mesh.Vertices.Length / mesh.VertexCount
+            : 0;
+        if (vertexStride < 2)
         {
             return null;
         }
@@ -228,11 +231,29 @@ public class TextureLoader
                     offY -= textureRectOffsetY;
                 }
 
-                for (var i = 0; i < mesh.Indices.Length; i += 3)
+                for (var i = 0; i + 2 < mesh.Indices.Length; i += 3)
                 {
-                    var pointAIdx = mesh.Indices[i] * 3;
-                    var pointBIdx = mesh.Indices[i + 1] * 3;
-                    var pointCIdx = mesh.Indices[i + 2] * 3;
+                    var pointAIndex = mesh.Indices[i];
+                    var pointBIndex = mesh.Indices[i + 1];
+                    var pointCIndex = mesh.Indices[i + 2];
+                    var vertexCount = (uint)mesh.VertexCount;
+                    if (pointAIndex >= vertexCount ||
+                        pointBIndex >= vertexCount ||
+                        pointCIndex >= vertexCount)
+                    {
+                        return null;
+                    }
+
+                    var pointAIdx = (int)pointAIndex * vertexStride;
+                    var pointBIdx = (int)pointBIndex * vertexStride;
+                    var pointCIdx = (int)pointCIndex * vertexStride;
+                    if (pointAIdx + 1 >= mesh.Vertices.Length ||
+                        pointBIdx + 1 >= mesh.Vertices.Length ||
+                        pointCIdx + 1 >= mesh.Vertices.Length)
+                    {
+                        return null;
+                    }
+
                     var pointA = new SKPoint(
                         mesh.Vertices[pointAIdx] * pixelsToUnits + offX,
                         mesh.Vertices[pointAIdx + 1] * pixelsToUnits + offY

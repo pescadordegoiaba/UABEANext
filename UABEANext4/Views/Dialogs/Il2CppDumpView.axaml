@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dlg="using:UABEANext4.ViewModels.Dialogs"
+             mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="520"
+             x:Class="UABEANext4.Views.Dialogs.Il2CppDumpView"
+             x:DataType="dlg:Il2CppDumpViewModel"
+             Background="{DynamicResource DockThemeBackgroundBrush}">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16" RowSpacing="8">
+
+        <ScrollViewer Grid.Row="0" MaxHeight="220">
+            <StackPanel Spacing="8">
+                <TextBlock Text="Dump IL2CPP + metadata (mprotector / XOR bypass)" FontWeight="SemiBold" />
+
+                <StackPanel>
+                    <TextBlock Text="Pasta do APK / jogo" FontSize="12" Opacity="0.8" />
+                    <Button Content="Detectar na pasta do APK extraído…" Command="{Binding BrowseApkRootCommand}" HorizontalAlignment="Stretch" />
+                </StackPanel>
+
+                <TextBlock Text="{Binding ProbeStatus}" TextWrapping="Wrap" FontSize="12" Opacity="0.85"
+                           Foreground="{DynamicResource DockThemeForegroundBrush}" />
+
+                <StackPanel>
+                    <TextBlock Text="IL2CPP binary" FontSize="12" Opacity="0.8" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBox Text="{Binding Il2CppBinaryPath}" Watermark="GameAssembly.dll / libil2cpp.so" />
+                        <Button Grid.Column="1" Content="..." Command="{Binding BrowseIl2CppCommand}" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="global-metadata.dat (optional if embedded)" FontSize="12" Opacity="0.8" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBox Text="{Binding MetadataPath}" Watermark="Leave empty to extract from binary" />
+                        <Button Grid.Column="1" Content="..." Command="{Binding BrowseMetadataCommand}" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Output folder" FontSize="12" Opacity="0.8" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBox Text="{Binding OutputDirectory}" Watermark="il2cpp_dump" />
+                        <Button Grid.Column="1" Content="..." Command="{Binding BrowseOutputCommand}" />
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Install decrypted metadata into game Data" FontSize="12" Opacity="0.8" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBox Text="{Binding GameDataDirectory}" Watermark=".../Data or .../il2cpp_data parent" />
+                        <Button Grid.Column="1" Content="..." Command="{Binding BrowseGameDataCommand}" />
+                    </Grid>
+                </StackPanel>
+
+                <CheckBox IsChecked="{Binding InstallForWorkspace}" Content="Apply to workspace MonoBehaviour templates after dump" />
+                <CheckBox IsChecked="{Binding GenerateStruct}" Content="Generate il2cpp.h / script.json" />
+                <CheckBox IsChecked="{Binding GenerateDummyDll}" Content="Generate DummyDll" />
+                <CheckBox IsChecked="{Binding ForceVersion}" Content="Force IL2CPP version" />
+                <NumericUpDown IsEnabled="{Binding ForceVersion}" Value="{Binding ForceVersionValue}" Minimum="16" Maximum="35" FormatString="0.0" />
+                <CheckBox IsChecked="{Binding ForceDump}" Content="Force dump (already dumped binaries)" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}" BorderThickness="1" Padding="6">
+            <ScrollViewer>
+                <TextBox Text="{Binding LogText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                         MinHeight="120" BorderThickness="0" Background="Transparent" />
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="Usar Mono no workspace" MinWidth="140"
+                    IsVisible="{Binding IsMonoProject}"
+                    Click="UseMono_Click" />
+            <Button Content="Run dump" MinWidth="100" IsDefault="True"
+                    IsEnabled="{Binding !IsRunning}"
+                    IsVisible="{Binding !IsMonoProject}"
+                    Click="RunDump_Click" />
+            <Button Content="Cancel" MinWidth="85" IsCancel="True" Click="Cancel_Click" />
+        </StackPanel>
+    </Grid>
+</UserControl>

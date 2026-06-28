@@ -6,6 +6,22 @@
              xmlns:tools="using:UABEANext4.ViewModels.Tools"
              d:DesignWidth="400" d:DesignHeight="450"
              x:Class="UABEANext4.Views.Tools.MeshPreviewView"
-             x:DataType="tools:PreviewerToolViewModel">
-    <mesh:MeshPreviewerControl ActiveMesh="{Binding ActiveMesh}" />
+             x:DataType="tools:PreviewerToolViewModel"
+             Focusable="True">
+    <Grid>
+        <mesh:MeshPreviewerControl x:Name="MeshViewer"
+                                   ActiveMesh="{Binding ActiveMesh}"
+                                   StatusText="{Binding MeshPreviewInfo, Mode=TwoWay}" />
+
+        <Border VerticalAlignment="Bottom"
+                HorizontalAlignment="Stretch"
+                Background="#AA000000"
+                Padding="8,6"
+                IsHitTestVisible="False">
+            <TextBlock Text="{Binding MeshPreviewInfo}"
+                       FontSize="11"
+                       Foreground="#EEEEEE"
+                       TextWrapping="Wrap" />
+        </Border>
+    </Grid>
 </UserControl>

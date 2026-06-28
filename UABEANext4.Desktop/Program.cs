@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using UABEANext4.Util;
 
 namespace UABEANext4.Desktop;
 
@@ -13,12 +14,27 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        VerboseLog.InitializeEarly(args);
+        VerboseLog.Log("Startup", "Main() entered");
+
 #if !DEBUG
         var currentDomain = AppDomain.CurrentDomain;
         currentDomain.UnhandledException += new UnhandledExceptionEventHandler(UABEAExceptionHandler);
 #endif
 
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        catch (Exception ex)
+        {
+            VerboseLog.LogException("Startup", ex, "Fatal error in application lifetime");
+            throw;
+        }
+        finally
+        {
+            VerboseLog.Log("Startup", "Main() exiting");
+        }
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.
@@ -32,6 +48,7 @@ class Program
     {
         if (args.ExceptionObject is Exception ex)
         {
+            VerboseLog.LogException("Crash", ex, "UnhandledException");
             File.WriteAllText("uabeacrash.log", ex.ToString());
             if (OperatingSystem.IsWindows())
             {

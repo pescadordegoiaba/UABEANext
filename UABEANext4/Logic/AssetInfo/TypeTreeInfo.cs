@@ -6,6 +6,7 @@ using AvaloniaEdit.Utils;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using UABEANext4.AssetWorkspace;
 
 namespace UABEANext4.Logic.AssetInfo;
@@ -21,8 +22,10 @@ public partial class TypeTreeInfo : ObservableObject
         get => _selectedType;
         set
         {
-            _selectedType = value;
-            SelectedTypeChanged(value);
+            if (SetProperty(ref _selectedType, value))
+            {
+                SelectedTypeChanged(value);
+            }
         }
     }
 
@@ -32,8 +35,10 @@ public partial class TypeTreeInfo : ObservableObject
         get => _selectedNode;
         set
         {
-            _selectedNode = value;
-            SelectedNodeChanged(value);
+            if (SetProperty(ref _selectedNode, value))
+            {
+                SelectedNodeChanged(value);
+            }
         }
     }
 
@@ -54,6 +59,8 @@ public partial class TypeTreeInfo : ObservableObject
             var ttTypeInfo = new TypeTreeTypeInfo(workspace.Manager, fileInst, type);
             TypeTreeTypeInfos.Add(ttTypeInfo);
         }
+
+        SelectedType = TypeTreeTypeInfos.FirstOrDefault();
     }
 
     private TypeTreeInfo()
@@ -186,6 +193,7 @@ public partial class TypeTreeInfo : ObservableObject
         }
 
         TypeTreeNodes.AddRange(rootNodes);
+        SelectedNode = TypeTreeNodes.FirstOrDefault();
     }
 
     public static TypeTreeInfo Empty { get; } = new()

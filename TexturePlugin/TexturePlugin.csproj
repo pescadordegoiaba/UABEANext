@@ -19,6 +19,7 @@
 
   <PropertyGroup>
     <UABEANativeConfig>unknown</UABEANativeConfig>
+    <UABEANativeLibrariesAvailable>false</UABEANativeLibrariesAvailable>
   </PropertyGroup>
 
   <!-- this will only execute once while building the solution -->
@@ -34,29 +35,40 @@
     
     <!-- anycpu will build x64, I have to choose one or another -->
     <!-- and I figure most people have 64bit computers          -->
-    <PropertyGroup Condition="$([MSBuild]::IsOsPlatform(Windows)) AND ('$(Platform)' == 'x64' OR '$(Platform)' == 'AnyCPU')">
+    <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-x64' OR ($([MSBuild]::IsOsPlatform(Windows)) AND ('$(Platform)' == 'x64' OR '$(Platform)' == 'AnyCPU') AND '$(RuntimeIdentifier)' == '')">
       <UABEANativeConfig>win-x64</UABEANativeConfig>
       <TextureEncoderBinPath>$(SolutionDir)NativeLibs\win-x64\textureencoder.dll</TextureEncoderBinPath>
       <CuttlefishBinPath>$(SolutionDir)NativeLibs\win-x64\cuttlefish.dll</CuttlefishBinPath>
       <PVRTexToolBinDir>$(SolutionDir)NativeLibs\win-x64\PVRTexLib.dll</PVRTexToolBinDir>
+      <UABEANativeLibrariesAvailable>true</UABEANativeLibrariesAvailable>
     </PropertyGroup>
-    <PropertyGroup Condition="$([MSBuild]::IsOsPlatform(Windows)) AND '$(Platform)' == 'x86'">
+    <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-x86' OR ($([MSBuild]::IsOsPlatform(Windows)) AND '$(Platform)' == 'x86' AND '$(RuntimeIdentifier)' == '')">
       <UABEANativeConfig>win-x86</UABEANativeConfig>
       <TextureEncoderBinPath>$(SolutionDir)NativeLibs\win-x86\textureencoder.dll</TextureEncoderBinPath>
       <CuttlefishBinPath>$(SolutionDir)NativeLibs\win-x86\cuttlefish.dll</CuttlefishBinPath>
       <PVRTexToolBinDir>$(SolutionDir)NativeLibs\win-x86\PVRTexLib.dll</PVRTexToolBinDir>
+      <UABEANativeLibrariesAvailable>true</UABEANativeLibrariesAvailable>
     </PropertyGroup>
-    <PropertyGroup Condition="$([MSBuild]::IsOsPlatform(Linux)) AND '$(LinuxUnameM)' == 'x86_64'">
+    <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64' OR ($([MSBuild]::IsOsPlatform(Linux)) AND '$(LinuxUnameM)' == 'x86_64' AND '$(RuntimeIdentifier)' == '')">
       <UABEANativeConfig>linux-x64</UABEANativeConfig>
       <TextureEncoderBinPath>$(SolutionDir)NativeLibs\linux-x64\libtextureencoder.so</TextureEncoderBinPath>
       <CuttlefishBinPath>$(SolutionDir)NativeLibs\linux-x64\libcuttlefish.so.2.10</CuttlefishBinPath>
       <PVRTexToolBinDir>$(SolutionDir)NativeLibs\linux-x64\libPVRTexLib.so</PVRTexToolBinDir>
+      <UABEANativeLibrariesAvailable>true</UABEANativeLibrariesAvailable>
     </PropertyGroup>
-    <PropertyGroup Condition="$([MSBuild]::IsOsPlatform(Linux)) AND ('$(LinuxUnameM)' == 'i386' OR '$(LinuxUnameM)' == 'i686')">
+    <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'linux-x86' OR ($([MSBuild]::IsOsPlatform(Linux)) AND ('$(LinuxUnameM)' == 'i386' OR '$(LinuxUnameM)' == 'i686') AND '$(RuntimeIdentifier)' == '')">
       <UABEANativeConfig>linux-x86</UABEANativeConfig>
       <TextureEncoderBinPath>$(SolutionDir)NativeLibs\linux-x86\libtextureencoder.so</TextureEncoderBinPath>
       <CuttlefishBinPath>$(SolutionDir)NativeLibs\linux-x86\libcuttlefish.so.2.10</CuttlefishBinPath>
       <PVRTexToolBinDir>$(SolutionDir)NativeLibs\linux-x86\libPVRTexLib.so</PVRTexToolBinDir>
+      <UABEANativeLibrariesAvailable>true</UABEANativeLibrariesAvailable>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'linux-musl-x64'">
+      <UABEANativeConfig>linux-musl-x64</UABEANativeConfig>
+      <TextureEncoderBinPath></TextureEncoderBinPath>
+      <CuttlefishBinPath></CuttlefishBinPath>
+      <PVRTexToolBinDir></PVRTexToolBinDir>
+      <UABEANativeLibrariesAvailable>false</UABEANativeLibrariesAvailable>
     </PropertyGroup>
   </Target>
 
@@ -64,30 +76,30 @@
   <!-- or publishing, so we just have two separate targets -->
 
   <!-- build event -->
-  <Target Name="CopyLibrariesBuild" DependsOnTargets="BuildNativeAndSetConfig" AfterTargets="AfterBuild" Condition="'$(SolutionDir)' != '*Undefined*'">
+  <Target Name="CopyLibrariesBuild" DependsOnTargets="BuildNativeAndSetConfig" AfterTargets="AfterBuild" Condition="'$(SolutionDir)' != '*Undefined*' And '$(UABEACopyPluginToDesktop)' == 'true'">
     <PropertyGroup>
       <UABEABinDir>$(SolutionDir)UABEANext4.Desktop\$(OutputPath)</UABEABinDir>
     </PropertyGroup>
 
     <!-- copy texture encoder and deps -->
-    <Copy SourceFiles="$(TextureEncoderBinPath)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
-    <Copy SourceFiles="$(CuttlefishBinPath)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
-    <Copy SourceFiles="$(PVRTexToolBinDir)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
+    <Copy Condition="'$(UABEANativeLibrariesAvailable)' == 'true' And Exists('$(TextureEncoderBinPath)')" SourceFiles="$(TextureEncoderBinPath)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
+    <Copy Condition="'$(UABEANativeLibrariesAvailable)' == 'true' And Exists('$(CuttlefishBinPath)')" SourceFiles="$(CuttlefishBinPath)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
+    <Copy Condition="'$(UABEANativeLibrariesAvailable)' == 'true' And Exists('$(PVRTexToolBinDir)')" SourceFiles="$(PVRTexToolBinDir)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
 
     <!-- copy textureplugin -->
     <Copy SourceFiles="$(OutputPath)TexturePlugin.dll" DestinationFolder="$(UABEABinDir)plugins" ContinueOnError="true" />
   </Target>
 
   <!-- publish event -->
-  <Target Name="CopyLibrariesPublish" DependsOnTargets="BuildNativeAndSetConfig" AfterTargets="Publish" Condition="'$(SolutionDir)' != '*Undefined*'">
+  <Target Name="CopyLibrariesPublish" DependsOnTargets="BuildNativeAndSetConfig" AfterTargets="Publish" Condition="'$(SolutionDir)' != '*Undefined*' And '$(UABEACopyPluginToDesktop)' == 'true'">
     <PropertyGroup>
       <UABEABinDir>$(SolutionDir)UABEANext4.Desktop\$(PublishDir)</UABEABinDir>
     </PropertyGroup>
 
     <!-- copy textoolwrap and deps -->
-    <Copy SourceFiles="$(TextureEncoderBinPath)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
-    <Copy SourceFiles="$(CuttlefishBinPath)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
-    <Copy SourceFiles="$(PVRTexToolBinDir)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
+    <Copy Condition="'$(UABEANativeLibrariesAvailable)' == 'true' And Exists('$(TextureEncoderBinPath)')" SourceFiles="$(TextureEncoderBinPath)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
+    <Copy Condition="'$(UABEANativeLibrariesAvailable)' == 'true' And Exists('$(CuttlefishBinPath)')" SourceFiles="$(CuttlefishBinPath)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
+    <Copy Condition="'$(UABEANativeLibrariesAvailable)' == 'true' And Exists('$(PVRTexToolBinDir)')" SourceFiles="$(PVRTexToolBinDir)" DestinationFolder="$(UABEABinDir)runtimes\$(UABEANativeConfig)\native" ContinueOnError="true" />
 
     <!-- copy textureplugin -->
     <Copy SourceFiles="$(OutputPath)TexturePlugin.dll" DestinationFolder="$(UABEABinDir)plugins" ContinueOnError="true" />

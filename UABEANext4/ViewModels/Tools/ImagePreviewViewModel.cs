@@ -75,8 +75,8 @@ public partial class ImagePreviewViewModel : ViewModelBase
         else
         {
             ImageInfo = "No image";
+            TextureFormat = string.Empty;
             ZoomLevel = 1.0;
-            OnPropertyChanged(nameof(ZoomLevelY));
         }
     }
 
@@ -88,10 +88,10 @@ public partial class ImagePreviewViewModel : ViewModelBase
         double ratioX = availableWidth / Image.PixelSize.Width;
         double ratioY = availableHeight / Image.PixelSize.Height;
 
-        ZoomLevel = Math.Min(ratioX, ratioY) * 0.95;
+        SetZoom(Math.Min(ratioX, ratioY) * 0.95);
 
         if (ZoomLevel > 1.0)
-            ZoomLevel = 1.0;
+            SetZoom(1.0);
     }
 
     [RelayCommand]
@@ -106,18 +106,44 @@ public partial class ImagePreviewViewModel : ViewModelBase
     {
         double step = 1.1;
         if (increase)
-            ZoomLevel *= step;
+            SetZoom(ZoomLevel * step);
         else
-            ZoomLevel /= step;
-
-        ZoomLevel = Math.Clamp(ZoomLevel, 0.05, 20.0);
-        OnPropertyChanged(nameof(ZoomLevelY));
+            SetZoom(ZoomLevel / step);
     }
 
     partial void OnZoomLevelChanged(double value)
+    {
+        OnPropertyChanged(nameof(ZoomLevelY));
+        OnPropertyChanged(nameof(DisplayWidth));
+        OnPropertyChanged(nameof(DisplayHeight));
+    }
+
+    partial void OnImageChanged(Bitmap? value)
     {
         OnPropertyChanged(nameof(DisplayWidth));
         OnPropertyChanged(nameof(DisplayHeight));
     }
 
+    [RelayCommand]
+    private void ZoomIn()
+    {
+        AdjustZoom(true);
+    }
+
+    [RelayCommand]
+    private void ZoomOut()
+    {
+        AdjustZoom(false);
+    }
+
+    [RelayCommand]
+    private void ActualSize()
+    {
+        SetZoom(1.0);
+    }
+
+    private void SetZoom(double zoomLevel)
+    {
+        ZoomLevel = Math.Clamp(zoomLevel, 0.05, 20.0);
+    }
 }

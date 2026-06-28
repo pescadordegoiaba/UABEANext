@@ -273,8 +273,12 @@ public partial class AssetDocumentViewModel : Document
 
     public async Task Load(List<AssetsFileInstance> fileInsts)
     {
+        using var scope = VerboseLog.Scope("AssetDoc", "Load", $"files={fileInsts.Count}");
         if (Workspace == null)
+        {
+            VerboseLog.Log("AssetDoc", "Load aborted: workspace is null");
             return;
+        }
 
         _disposableLastList?.Dispose();
 
@@ -317,10 +321,17 @@ public partial class AssetDocumentViewModel : Document
 
             CollectionView = new DataGridCollectionView(Items);
             CollectionView.Filter = SetDataGridFilter(SearchText);
+            scope.Complete($"items={Items.Count}");
         }
         catch (OperationCanceledException)
         {
+            VerboseLog.Log("AssetDoc", "Load cancelled");
             sourceList.Clear();
+        }
+        catch (Exception ex)
+        {
+            scope.Fail(ex);
+            throw;
         }
         finally
         {
@@ -727,7 +738,7 @@ public partial class AssetDocumentViewModel : Document
         if (SelectedItems.Count == 0)
         {
             PluginsItems.Clear();
-            PluginsItems.Add(new PluginItemInfo("No assets selected", null, this));
+            PluginsItems.Add(new PluginItemInfo("No assets selected", null, default, this));
             return;
         }
 
@@ -741,14 +752,14 @@ public partial class AssetDocumentViewModel : Document
         if (pluginsList.Count == 0)
         {
             PluginsItems.Clear();
-            PluginsItems.Add(new PluginItemInfo("No plugins available", null, this));
+            PluginsItems.Add(new PluginItemInfo("No plugins available", null, default, this));
         }
         else
         {
             PluginsItems.Clear();
             foreach (var plugin in pluginsList)
             {
-                PluginsItems.Add(new PluginItemInfo(plugin.Option.Name, plugin.Option, this));
+                PluginsItems.Add(new PluginItemInfo(plugin.Option.Name, plugin.Option, plugin.Mode, this));
             }
         }
 
@@ -867,20 +878,14 @@ public partial class AssetDocumentViewModel : Document
 
     public void OnAssetOpened(List<AssetInst> assets)
     {
-        if (assets.Count > 0)
-        {
-            WeakReferenceMessenger.Default.Send(new AssetsSelectedMessage([assets[0]]));
-        }
-
+        VerboseLog.Log("AssetDoc", $"OnAssetOpened count={assets.Count}" + (assets.Count > 0 ? $" pathId={assets[0].PathId} type={assets[0].TypeId}" : ""));
         SelectedItems = assets;
+        WeakReferenceMessenger.Default.Send(new AssetsSelectedMessage(SelectedItems.ToList()));
     }
 
     public void ResendSelectedAssetsSelected()
     {
-        if (SelectedItems.Count > 0)
-        {
-            WeakReferenceMessenger.Default.Send(new AssetsSelectedMessage([SelectedItems[0]]));
-        }
+        WeakReferenceMessenger.Default.Send(new AssetsSelectedMessage(SelectedItems.ToList()));
     }
 
     public void CreateContextMenu()
@@ -908,9 +913,17 @@ public partial class AssetDocumentViewModel : Document
         {
             foreach (var plugin in pluginsList)
             {
+                var mode = plugin.Mode;
                 pluginsMenu.Items.Add(new MenuOptionViewModel(
                     plugin.Option.Name,
-                    new RelayCommand(() => plugin.Option.Execute(Workspace, new UavPluginFunctions(), pluginTypes, SelectedItems))
+                    new AsyncRelayCommand(async () =>
+                    {
+                        var ok = await plugin.Option.Execute(Workspace, new UavPluginFunctions(), mode, SelectedItems);
+                        if (ok)
+                        {
+                            ResendSelectedAssetsSelected();
+                        }
+                    })
                 ));
             }
         }

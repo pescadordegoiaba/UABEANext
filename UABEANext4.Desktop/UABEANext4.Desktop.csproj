@@ -4,10 +4,14 @@
     <!--If you are willing to use Windows/MacOS native APIs you will need to create 3 projects.
     One for Windows with net7.0-windows TFM, one for MacOS with net7.0-macos and one with net7.0 TFM for Linux.-->
     <TargetFramework>net8.0</TargetFramework>
+    <RuntimeIdentifiers>linux-x64;linux-musl-x64;win-x64</RuntimeIdentifiers>
     <Nullable>enable</Nullable>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <UseAppHost>true</UseAppHost>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>logo-new.ico</ApplicationIcon>
+    <UABEARepoRoot Condition="'$(SolutionDir)' != '' And '$(SolutionDir)' != '*Undefined*'">$(SolutionDir)</UABEARepoRoot>
+    <UABEARepoRoot Condition="'$(UABEARepoRoot)' == ''">$(MSBuildProjectDirectory)/..</UABEARepoRoot>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="logo-new.ico" />
@@ -21,19 +25,19 @@
     <ProjectReference Include="..\UABEANext4\UABEANext4.csproj" />
   </ItemGroup>
   
-  <Target Name="UABEAAfterBuild" AfterTargets="AfterBuild" Condition="'$(SolutionDir)' != '*Undefined*'">
+  <Target Name="UABEAAfterBuild" AfterTargets="AfterBuild">
     <ItemGroup>
-      <ReleaseFiles Include="$(SolutionDir)ReleaseFiles\**\*" />
+      <ReleaseFiles Include="$(UABEARepoRoot)/ReleaseFiles/**/*" />
     </ItemGroup>
-    <Copy SourceFiles="@(ReleaseFiles)" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
-    <MakeDir Directories="$(OutputPath)plugins" ContinueOnError="true" />
+    <Copy SourceFiles="@(ReleaseFiles)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <MakeDir Directories="$(OutputPath)plugins" />
   </Target>
   
-  <Target Name="UABEAAfterPublish" AfterTargets="Publish" Condition="'$(SolutionDir)' != '*Undefined*'">
+  <Target Name="UABEAAfterPublish" AfterTargets="Publish">
     <ItemGroup>
-      <ReleaseFiles Include="$(SolutionDir)ReleaseFiles\**\*" />
+      <ReleaseFiles Include="$(UABEARepoRoot)/ReleaseFiles/**/*" />
     </ItemGroup>
-    <Copy SourceFiles="@(ReleaseFiles)" DestinationFolder="$(PublishDir)" ContinueOnError="true" />
-    <MakeDir Directories="$(PublishDir)plugins" ContinueOnError="true" />
+    <Copy SourceFiles="@(ReleaseFiles)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+    <MakeDir Directories="$(PublishDir)plugins" />
   </Target>
 </Project>

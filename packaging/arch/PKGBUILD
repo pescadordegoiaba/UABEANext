@@ -1,0 +1,46 @@
+# Maintainer: UABEANext contributors
+pkgname=uabea-next-bin
+pkgver=0.0.0
+pkgrel=1
+pkgdesc='Unity asset bundle editor, self-contained binary package'
+arch=('x86_64')
+url='https://github.com/nesrak1/UABEANext'
+license=('MIT')
+depends=(
+  'fontconfig'
+  'freetype2'
+  'libx11'
+  'libxext'
+  'libxrandr'
+  'libxrender'
+  'libxcursor'
+  'libxi'
+  'libxinerama'
+  'libglvnd'
+  'mesa'
+  'gtk3'
+  'xdg-desktop-portal'
+)
+provides=('uabea-next')
+conflicts=('uabea-next')
+source=('uabea-next-linux-x64.tar.gz')
+sha256sums=('SKIP')
+
+package() {
+  local srcpkg="$srcdir/uabea-next-linux-x64"
+
+  install -dm755 "$pkgdir/opt/uabea-next"
+  cp -a "$srcpkg/app" "$pkgdir/opt/uabea-next/"
+
+  install -Dm644 "$srcpkg/README-linux.txt" "$pkgdir/usr/share/doc/uabea-next/README-linux.txt"
+  install -Dm644 "$srcpkg/share/applications/uabea-next.desktop" "$pkgdir/usr/share/applications/uabea-next.desktop"
+
+  install -dm755 "$pkgdir/usr/bin"
+  cat > "$pkgdir/usr/bin/uabea-next" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+# Verbose log: ~/.config/uabea-next/verbose.log (disable with UABEA_VERBOSE=0)
+exec /opt/uabea-next/app/UABEANext4.Desktop "$@"
+EOF
+  chmod 755 "$pkgdir/usr/bin/uabea-next"
+}

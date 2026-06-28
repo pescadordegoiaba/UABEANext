@@ -62,7 +62,10 @@ public partial class WorkspaceExplorerToolView : UserControl
             return;
 
         var treeViewItem = (TreeViewItem?)SolutionTreeView.TreeContainerFromItem(SolutionTreeView.SelectedItem);
-        treeViewItem?.IsExpanded = true;
+        if (treeViewItem is not null)
+        {
+            treeViewItem.IsExpanded = true;
+        }
     }
 
     private void SolutionTreeView_ContextRequested(object? sender, ContextRequestedEventArgs e)

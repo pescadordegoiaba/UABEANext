@@ -5,9 +5,11 @@ using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Markup.Xaml.MarkupExtensions;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -50,15 +52,7 @@ public class AssetDataTreeView : TreeView
             menuCollapseSel
         };
 
-        ActiveAssetsProperty.Changed.Subscribe(e =>
-        {
-            var value = e.NewValue.Value;
-            if (value != null)
-            {
-                value.CollectionChanged += (s, e) => LoadAssets(value);
-                LoadAssets(value);
-            }
-        });
+        ReloadAssets();
     }
 
     private void MenuEditAsset_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -144,13 +138,21 @@ public class AssetDataTreeView : TreeView
 
     public void LoadComponent(AssetInst asset)
     {
+        using var scope = VerboseLog.Scope("Inspector", "LoadComponent", $"{asset.FileName} pathId={asset.PathId} typeId={asset.TypeId}");
         if (_workspace == null)
+        {
+            VerboseLog.Log("Inspector", "LoadComponent aborted: workspace is null");
             return;
+        }
 
         AssetTypeValueField? baseField = _workspace.GetBaseField(asset);
         if (baseField == null)
         {
-            TreeViewItem errorItem0 = CreateTreeItem("Asset failed to deserialize. A few possibilities:");
+            VerboseLog.Log("Inspector", $"GetBaseField failed: {_workspace.LastBaseFieldReadError}");
+            var errorText = string.IsNullOrWhiteSpace(_workspace.LastBaseFieldReadError)
+                ? "Asset failed to deserialize. A few possibilities:"
+                : $"Asset failed to deserialize: {_workspace.LastBaseFieldReadError}";
+            TreeViewItem errorItem0 = CreateTreeItem(errorText);
             TreeViewItem errorItem1 = CreateTreeItem("The game's version is too new for this version of UABEA");
             TreeViewItem errorItem1I = CreateTreeItem("Try updating UABEA to see if it fixes the problem.");
             TreeViewItem errorItem2 = CreateTreeItem("The asset was a MonoBehaviour that didn't read correctly");
@@ -185,8 +187,10 @@ public class AssetDataTreeView : TreeView
         baseItem.ItemsSource = new AvaloniaList<TreeViewItem>() { arrayIndexTreeItem };
         ListItems.Add(baseItem);
 
-        baseItem.IsExpanded = true;
         SetTreeItemEvents(baseItem, asset.FileInstance, asset.PathId, baseField);
+        LoadTreeItemChildren(baseItem, asset.FileInstance, asset.PathId, baseField);
+        baseItem.IsExpanded = true;
+        scope.Complete($"children={baseField.Children.Count}");
     }
 
     public void ExpandAllChildren(TreeViewItem treeItem)
@@ -327,13 +331,28 @@ public class AssetDataTreeView : TreeView
         var expandObs = item.GetObservable(TreeViewItem.IsExpandedProperty);
         expandObs.Subscribe(new SimpleObserver<bool>(isExpanded =>
         {
-            AssetDataTreeViewItem itemInfo = (AssetDataTreeViewItem)item.Tag;
+            if (item.Tag is not AssetDataTreeViewItem itemInfo)
+            {
+                return;
+            }
+
             if (isExpanded && !itemInfo.loaded)
             {
-                itemInfo.loaded = true; // don't load this again
-                TreeLoad(fromFile, field, fromPathId, item);
+                LoadTreeItemChildren(item, fromFile, fromPathId, field);
             }
         }));
+    }
+
+    private void LoadTreeItemChildren(TreeViewItem item, AssetsFileInstance fromFile, long fromPathId, AssetTypeValueField field)
+    {
+        if (item.Tag is not AssetDataTreeViewItem itemInfo || itemInfo.loaded)
+        {
+            return;
+        }
+
+        VerboseLog.Log("Inspector", $"LoadTreeItemChildren file={fromFile.name} pathId={fromPathId} field={field.TypeName}.{field.FieldName} children={field.Children.Count}");
+        itemInfo.loaded = true;
+        TreeLoad(fromFile, field, fromPathId, item);
     }
 
     private void SetPPtrEvents(TreeViewItem item, AssetsFileInstance fromFile, long fromPathId, AssetInst? asset)
@@ -345,7 +364,7 @@ public class AssetDataTreeView : TreeView
             AssetDataTreeViewItem itemInfo = (AssetDataTreeViewItem)item.Tag;
             if (isExpanded && !itemInfo.loaded)
             {
-                itemInfo.loaded = true; // don't load this again
+                itemInfo.loaded = true;
 
                 if (asset == null)
                 {
@@ -356,7 +375,10 @@ public class AssetDataTreeView : TreeView
                 AssetTypeValueField? baseField = _workspace!.GetBaseField(asset);
                 if (baseField == null)
                 {
-                    item.ItemsSource = new AvaloniaList<TreeViewItem>() { CreateTreeItem("[failed to load]") };
+                    var error = string.IsNullOrWhiteSpace(_workspace.LastBaseFieldReadError)
+                        ? "[failed to load]"
+                        : $"[failed to load: {_workspace.LastBaseFieldReadError}]";
+                    item.ItemsSource = new AvaloniaList<TreeViewItem>() { CreateTreeItem(error) };
                     return;
                 }
 
@@ -364,21 +386,32 @@ public class AssetDataTreeView : TreeView
                 TreeViewItem arrayIndexTreeItem = CreateTreeItem("Loading...");
                 baseItem.ItemsSource = new AvaloniaList<TreeViewItem>() { arrayIndexTreeItem };
                 item.ItemsSource = new AvaloniaList<TreeViewItem>() { baseItem };
-                SetTreeItemEvents(baseItem, asset.FileInstance, fromPathId, baseField);
+                SetTreeItemEvents(baseItem, asset.FileInstance, asset.PathId, baseField);
+                LoadTreeItemChildren(baseItem, asset.FileInstance, asset.PathId, baseField);
+                baseItem.IsExpanded = true;
             }
         }));
     }
 
+    private static int GetVisibleChildCount(AssetTypeValueField assetField)
+    {
+        if (assetField.Value != null && assetField.Value.ValueType == AssetValueType.ManagedReferencesRegistry)
+        {
+            return assetField.AsManagedReferencesRegistry.references.Count;
+        }
+
+        return assetField.Children.Count;
+    }
+
     private void TreeLoad(AssetsFileInstance fromFile, AssetTypeValueField assetField, long fromPathId, TreeViewItem treeItem)
     {
-        List<AssetTypeValueField> children;
-        if (assetField.Value != null && assetField.Value.ValueType == AssetValueType.ManagedReferencesRegistry)
-            children = assetField.AsManagedReferencesRegistry.references.Select(r => r.data).ToList();
-        else
-            children = assetField.Children;
-
-        if (assetField.Children.Count == 0)
+        var visibleChildren = GetVisibleChildCount(assetField);
+        VerboseLog.Log("Inspector", $"TreeLoad {assetField.TypeName}.{assetField.FieldName} visibleChildren={visibleChildren}");
+        if (visibleChildren == 0)
+        {
+            treeItem.ItemsSource = new AvaloniaList<TreeViewItem> { CreateTreeItem("[no fields]") };
             return;
+        }
 
         int arrayIdx = 0;
         AvaloniaList<TreeViewItem> items = new AvaloniaList<TreeViewItem>(assetField.Children.Count + 1);
@@ -396,7 +429,10 @@ public class AssetDataTreeView : TreeView
 
         foreach (AssetTypeValueField childField in assetField)
         {
-            if (childField == null) return;
+            if (childField == null)
+            {
+                continue;
+            }
             string middle = "";
             string value = "";
             string comment = "";
@@ -668,6 +704,7 @@ public class AssetDataTreeView : TreeView
 
     private Workspace? _workspace = null;
     private ObservableCollection<AssetInst>? _activeAssets = null;
+    private bool _reloadAssetsScheduled;
 
     public static readonly DirectProperty<AssetDataTreeView, Workspace?> WorkspaceProperty =
         AvaloniaProperty.RegisterDirect<AssetDataTreeView, Workspace?>(nameof(Workspace), o => o.Workspace, (o, v) => o.Workspace = v);
@@ -677,22 +714,90 @@ public class AssetDataTreeView : TreeView
     public Workspace? Workspace
     {
         get => _workspace;
-        set => SetAndRaise(WorkspaceProperty, ref _workspace, value);
+        set
+        {
+            if (SetAndRaise(WorkspaceProperty, ref _workspace, value))
+            {
+                ReloadAssets();
+            }
+        }
     }
 
     public ObservableCollection<AssetInst>? ActiveAssets
     {
         get => _activeAssets;
-        set => SetAndRaise(ActiveAssetsProperty, ref _activeAssets, value);
+        set
+        {
+            if (_activeAssets == value)
+            {
+                return;
+            }
+
+            if (_activeAssets is not null)
+            {
+                _activeAssets.CollectionChanged -= ActiveAssets_CollectionChanged;
+            }
+
+            if (SetAndRaise(ActiveAssetsProperty, ref _activeAssets, value))
+            {
+                if (_activeAssets is not null)
+                {
+                    _activeAssets.CollectionChanged += ActiveAssets_CollectionChanged;
+                }
+
+                ReloadAssets();
+            }
+        }
+    }
+
+    private void ActiveAssets_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        ScheduleReloadAssets();
+    }
+
+    private void ScheduleReloadAssets()
+    {
+        if (_reloadAssetsScheduled)
+        {
+            return;
+        }
+
+        _reloadAssetsScheduled = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _reloadAssetsScheduled = false;
+            ReloadAssets();
+        }, DispatcherPriority.Background);
+    }
+
+    private void ReloadAssets()
+    {
+        VerboseLog.Log("Inspector", $"ReloadAssets count={_activeAssets?.Count ?? 0}, workspace={_workspace is not null}");
+        if (_activeAssets is null)
+        {
+            Reset();
+            return;
+        }
+
+        LoadAssets(_activeAssets);
     }
 
     private void LoadAssets(ObservableCollection<AssetInst> activeAssets)
     {
+        using var scope = VerboseLog.Scope("Inspector", "LoadAssets", $"count={activeAssets.Count}");
         Reset();
+        if (_workspace is null)
+        {
+            VerboseLog.Log("Inspector", "LoadAssets aborted: workspace is null");
+            return;
+        }
+
         foreach (var item in activeAssets)
         {
             LoadComponent(item);
         }
+
+        scope.Complete();
     }
 }
 

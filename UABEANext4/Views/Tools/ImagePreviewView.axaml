@@ -42,18 +42,39 @@
 
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        Classes="toolbar"
-                        Command="{Binding ImagePreview.CycleBackgroundCommand}"
-                        ToolTip.Tip="Cycle background color (Alpha, Checker, Black, White, Gray)">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="BG:" FontSize="11" VerticalAlignment="Center" Opacity="0.6"/>
-                        <TextBlock Text="{Binding ImagePreview.CurrentBgLabel}"
-                                   FontSize="11"
-                                   FontWeight="Bold"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                    <Button Classes="toolbar"
+                            Command="{Binding ImagePreview.ZoomOutCommand}"
+                            ToolTip.Tip="Zoom out">
+                        <TextBlock Text="-" FontSize="12" FontWeight="Bold"/>
+                    </Button>
+                    <Button Classes="toolbar"
+                            Command="{Binding ImagePreview.ActualSizeCommand}"
+                            ToolTip.Tip="Actual size">
+                        <TextBlock Text="1:1" FontSize="11"/>
+                    </Button>
+                    <Button Classes="toolbar"
+                            Click="OnFitClicked"
+                            ToolTip.Tip="Fit to view">
+                        <TextBlock Text="Fit" FontSize="11"/>
+                    </Button>
+                    <Button Classes="toolbar"
+                            Command="{Binding ImagePreview.ZoomInCommand}"
+                            ToolTip.Tip="Zoom in">
+                        <TextBlock Text="+" FontSize="12" FontWeight="Bold"/>
+                    </Button>
+                    <Button Classes="toolbar"
+                            Command="{Binding ImagePreview.CycleBackgroundCommand}"
+                            ToolTip.Tip="Cycle background color">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="BG:" FontSize="11" VerticalAlignment="Center" Opacity="0.6"/>
+                            <TextBlock Text="{Binding ImagePreview.CurrentBgLabel}"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>

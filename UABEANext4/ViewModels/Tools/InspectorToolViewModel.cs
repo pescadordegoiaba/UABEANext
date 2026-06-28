@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using UABEANext4.AssetWorkspace;
 using UABEANext4.Logic;
+using UABEANext4.Util;
 
 namespace UABEANext4.ViewModels.Tools;
 public partial class InspectorToolViewModel : Tool
@@ -41,8 +42,29 @@ public partial class InspectorToolViewModel : Tool
 
     private void OnAssetsSelected(object recipient, AssetsSelectedMessage message)
     {
+        var assets = message.Value;
+        VerboseLog.Log("Inspector", $"OnAssetsSelected count={assets.Count}" + (assets.Count > 0 ? $" first={assets[0].DisplayName} pathId={assets[0].PathId}" : ""));
+        if (assets.Count == ActiveAssets.Count)
+        {
+            var sameSelection = true;
+            for (int i = 0; i < assets.Count; i++)
+            {
+                if (!ReferenceEquals(assets[i], ActiveAssets[i]))
+                {
+                    sameSelection = false;
+                    break;
+                }
+            }
+
+            if (sameSelection)
+            {
+                VerboseLog.Log("Inspector", "OnAssetsSelected skipped (same selection)");
+                return;
+            }
+        }
+
         ActiveAssets.Clear();
-        foreach (var asset in message.Value)
+        foreach (var asset in assets)
         {
             ActiveAssets.Add(asset);
         }

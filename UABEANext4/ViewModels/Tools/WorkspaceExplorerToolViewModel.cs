@@ -45,6 +45,7 @@ namespace UABEANext4.ViewModels.Tools
 
         public void SelectedItemsChanged(List<WorkspaceItem> value)
         {
+            VerboseLog.Log("Explorer", $"SelectedItemsChanged count={value.Count}" + (value.Count > 0 ? $" first={value[0].Name} type={value[0].ObjectType}" : ""));
             WeakReferenceMessenger.Default.Send(new SelectedWorkspaceItemChangedMessage(value));
         }
 
