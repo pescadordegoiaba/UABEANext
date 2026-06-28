@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UABEANext4.AssetWorkspace;
@@ -111,6 +112,9 @@ public partial class MainViewModel : ViewModelBase
             case "Inspector": DockInspectorVisible = false; break;
             case "Previewer": DockPreviewerVisible = false; break;
         }
+
+        if (e.Dockable is Document document && _factory.DocMan.LastFocusedDocument == document)
+            _factory.DocMan.LastFocusedDocument = null;
     }
 
     private void FactoryDockableFocused(object? sender, FocusedDockableChangedEventArgs e)
@@ -229,13 +233,19 @@ public partial class MainViewModel : ViewModelBase
         };
 
         Workspace.SetProgressThreadSafe(0f, "Loading files...");
+
+        var duplicateFilesList = new List<DuplicateLoadInfo>();
+        var stackTraceSb = new StringBuilder();
+
         await Task.Run(() =>
         {
             Workspace.ModifyMutex.WaitOne();
             Workspace.ProgressValue = 0;
+
             var startLoadOrder = Workspace.NextLoadIndex;
             var currentCount = 0;
             var anyLoaded = false;
+
             Parallel.ForEach(filePaths, options, (fileName, state, index) =>
             {
                 if (fileName is not null)
@@ -245,11 +255,19 @@ public partial class MainViewModel : ViewModelBase
                         VerboseLog.Log("Main", $"Loading file {fileName}");
                         var fileStream = File.Open(fileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                         var file = Workspace.LoadAnyFile(fileStream, startLoadOrder + (int)index);
+
                         var currentCountNow = Interlocked.Increment(ref currentCount);
                         var currentProgress = currentCountNow / (float)totalCount;
                         anyLoaded = true;
                         VerboseLog.Log("Main", $"Loaded {fileName} -> {(file?.Name ?? "null")}");
                         Workspace.SetProgressThreadSafe(currentProgress, "Loaded " + Path.GetFileName(fileName));
+                    }
+                    catch (DuplicateWorkspaceFileException dupEx)
+                    {
+                        lock (duplicateFilesList)
+                        {
+                            duplicateFilesList.Add(dupEx.Info);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -257,6 +275,11 @@ public partial class MainViewModel : ViewModelBase
                         var currentCountNow = Interlocked.Increment(ref currentCount);
                         var currentProgress = currentCountNow / (float)totalCount;
                         Workspace.SetProgressThreadSafe(currentProgress, "Skipping " + Path.GetFileName(fileName));
+
+                        lock (stackTraceSb)
+                        {
+                            stackTraceSb.AppendLine(ex.ToString());
+                        }
                     }
                 }
             });
@@ -271,6 +294,28 @@ public partial class MainViewModel : ViewModelBase
 
         TryAutoRegisterMonoFromOpenedPaths(filePaths);
 
+        if (duplicateFilesList.Count > 0 || stackTraceSb.Length > 0)
+        {
+            var fullErrorSb = new StringBuilder();
+            if (duplicateFilesList.Count > 0)
+            {
+                fullErrorSb.AppendLine("Duplicate files skipped:");
+                foreach (var duplicateFileInfo in duplicateFilesList)
+                {
+                    fullErrorSb.AppendLine($"- {duplicateFileInfo.DisplayLine}");
+                }
+            }
+
+            if (stackTraceSb.Length > 0)
+            {
+                fullErrorSb.AppendLine("Exceptions from files that failed to load:");
+                fullErrorSb.Append(stackTraceSb);
+            }
+
+            await MessageBoxUtil.ShowDialog("Some files failed to load", fullErrorSb.ToString());
+        }
+
+        // load class database for these files (or request user to provide one)
         if (Workspace.Manager.ClassDatabase is null)
         {
             var anySerializedItems = false;
@@ -303,7 +348,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 var dialogService = Ioc.Default.GetRequiredService<IDialogService>();
                 var version = await dialogService.ShowDialog(new VersionSelectViewModel());
-                if (version != null)
+                if (version is not null)
                 {
                     Workspace.Manager.LoadClassDatabaseFromPackage(version);
                 }
@@ -456,23 +501,21 @@ public partial class MainViewModel : ViewModelBase
 
     public async Task FileSave()
     {
-        var explorer = _factory.GetDockable<WorkspaceExplorerToolViewModel>("WorkspaceExplorer");
-        if (explorer == null)
+        var wsItems = GetSelectedDocWorkspaceItems();
+        if (wsItems is null)
             return;
 
-        var items = explorer.SelectedItems.Cast<WorkspaceItem>();
-        await DoSaveOverwrite(items);
+        await DoSaveOverwrite(wsItems);
     }
 
     // more like "save copy as"
     public async Task FileSaveAs()
     {
-        var explorer = _factory.GetDockable<WorkspaceExplorerToolViewModel>("WorkspaceExplorer");
-        if (explorer == null)
+        var wsItems = GetSelectedDocWorkspaceItems();
+        if (wsItems is null)
             return;
 
-        var items = explorer.SelectedItems.Cast<WorkspaceItem>();
-        await DoSaveCopy(items);
+        await DoSaveCopy(wsItems);
     }
 
     public async Task FileSaveAll()
@@ -558,6 +601,19 @@ public partial class MainViewModel : ViewModelBase
         }
 
         return fileInsts;
+    }
+
+    private IEnumerable<WorkspaceItem>? GetSelectedDocWorkspaceItems()
+    {
+        var lastFocusedDoc = _factory.DocMan.LastFocusedDocument;
+        if (lastFocusedDoc is not AssetDocumentViewModel assetDocVm)
+            return null;
+
+        var wsItems = assetDocVm.FileInsts
+            .Select(Workspace.FindWorkspaceItemByInstance)
+            .Where(i => i is not null) as IEnumerable<WorkspaceItem>;
+
+        return wsItems;
     }
 
     private async Task<AssetDocumentViewModel?> OpenAssetDocument(List<WorkspaceItem> workspaceItems, bool replaceDock)
