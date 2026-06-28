@@ -27,6 +27,7 @@ fallback for glibc compatibility problems. See `docs/linux-packaging.md`.
 - `python3 compile_linux_arch.py` installs/validates Manjaro/Arch build requirements, builds `linux-x64`, and creates the Arch `.pkg.tar.zst` package.
 - `python3 compile_windows.py` installs/validates Windows cross-build requirements and publishes a self-contained Windows 10/11 `win-x64` package from Linux.
 - `./compile_all_with_linux.sh` runs both Linux and Windows builds from Linux, keeping Windows-specific build variables isolated from Linux variables.
+- Fresh clones do not need a manual submodule step; the scripts initialize `Libraries/AssetsTools.NET` with `git submodule update --init --recursive` when needed.
 
 Useful flags:
 

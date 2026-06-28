@@ -49,6 +49,16 @@ def command_exists(name: str) -> bool:
     return shutil.which(name) is not None
 
 
+def ensure_submodules() -> None:
+    required_project = ROOT / "Libraries" / "AssetsTools.NET" / "AssetTools.NET" / "AssetsTools.NET.csproj"
+    if required_project.exists():
+        return
+    if not command_exists("git"):
+        raise SystemExit("Submodulo AssetsTools.NET nao inicializado e git nao foi encontrado.")
+    print("Inicializando submodulos git...")
+    run(["git", "submodule", "update", "--init", "--recursive"])
+
+
 def pacman_has_package(package: str) -> bool:
     return subprocess.run(
         ["pacman", "-Qi", package],
@@ -308,6 +318,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     install_linux_cross_requirements(args.skip_install)
+    ensure_submodules()
     dotnet = ensure_windows_dotnet(args.skip_install)
     env = clean_windows_build_env(dotnet)
     validate_requirements(dotnet, args.rid)

@@ -63,6 +63,16 @@ def build_env(dotnet: Path) -> dict[str, str]:
     return env
 
 
+def ensure_submodules() -> None:
+    required_project = ROOT / "Libraries" / "AssetsTools.NET" / "AssetTools.NET" / "AssetsTools.NET.csproj"
+    if required_project.exists():
+        return
+    if not command_exists("git"):
+        raise SystemExit("Submodulo AssetsTools.NET nao inicializado e git nao foi encontrado.")
+    print("Inicializando submodulos git...")
+    run(["git", "submodule", "update", "--init", "--recursive"])
+
+
 def pacman_has_package(package: str) -> bool:
     return subprocess.run(
         ["pacman", "-Qi", package],
@@ -161,6 +171,7 @@ def main() -> int:
     else:
         print("Instalacao de dependencias ignorada por --skip-install.")
 
+    ensure_submodules()
     dotnet = validate_common_requirements(args.rid, build_arch_package)
     env = build_env(dotnet)
     if args.check_only:
